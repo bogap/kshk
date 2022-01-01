@@ -5,8 +5,10 @@ import os
 FPS = 50
 
 clock = pygame.time.Clock()
-WINDOW_SIZE = WIDTH, HEIGHT = 1000, 6 * 50
+WINDOW_SIZE = WIDTH, HEIGHT = 30 * 50, 6 * 50
 screen = pygame.display.set_mode(WINDOW_SIZE)
+lvl = 1
+level = 'lvl' + str(lvl) + '.txt'
 
 
 def terminate():
@@ -38,7 +40,8 @@ tile_images = {
     'wall': load_image('box.png'),
     'empty': load_image('sky.png'),
     'grass': load_image('grass.png'),
-    'finish': load_image('flag.png')
+    'finish': load_image('flag.png'),
+    'fire': load_image('fire.png')
 }
 player_image = load_image('cat.png')
 
@@ -83,6 +86,22 @@ class Camera:
 
 
 camera = Camera()
+
+
+class Fire(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(player_group, all_sprites)
+        self.image = load_image('fire.png')
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x, tile_height * pos_y)
+        '''
+        fire_sprite = pygame.sprite.Sprite()
+        fire_sprite.image = load_image("fire.png")
+        # и размеры
+        fire_sprite.rect = fire_sprite.image.get_rect()
+        # добавим спрайт в группу
+        all_sprites.add(fire_sprite)
+        '''
 
 
 def generate_level(level):
@@ -158,73 +177,89 @@ player_group = pygame.sprite.Group()
 pygame.init()
 start_screen()
 screen = pygame.display.set_mode(WINDOW_SIZE)
-load_level('lvl1.txt')
+load_level(level)
 screen.fill((0, 0, 0))
-player, level_x, level_y = generate_level(load_level('lvl1.txt'))
+player, level_x, level_y = generate_level(load_level(level))
 # all_sprites.draw(screen)
 # tiles_group.draw(screen)
 # player_group.draw(screen)
 running = True
 player_x = 0
+time = pygame.time.get_ticks()
+start_fire = -3
+fire = [Fire(start_fire, x) for x in range(6)]
+fire_x = set()
+minus_time = 0
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         if event.type == pygame.KEYDOWN:
-            print(pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type())
-
             if event.key == pygame.K_RIGHT:
                 player_x += 50
                 if player.rect.x + tile_width < 50 * 30:
                     player.rect.x += tile_width
                     if pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type() == 'wall':
-                        #player_group.draw(screen)
-                        #pygame.display.flip()
+                        # player_group.draw(screen)
+                        # pygame.display.flip()
                         # группы спрайтов
                         all_sprites = pygame.sprite.Group()
                         tiles_group = pygame.sprite.Group()
                         player_group = pygame.sprite.Group()
-                        load_level('lvl1.txt')
-                        player, level_x, level_y = generate_level(load_level('lvl1.txt'))
+                        load_level(level)
+                        player, level_x, level_y = generate_level(load_level(level))
             if event.key == pygame.K_UP:
-                if player.rect.y-tile_width>=50*3:
-                    player.rect.y-=tile_width
+                if player.rect.y - tile_width >= 50 * 3:
+                    player.rect.y -= tile_width
                     if pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type() == 'wall':
-                        #player_group.draw(screen)
-                        #pygame.display.flip()
+                        # player_group.draw(screen)
+                        # pygame.display.flip()
                         # группы спрайтов
                         all_sprites = pygame.sprite.Group()
                         tiles_group = pygame.sprite.Group()
                         player_group = pygame.sprite.Group()
-                        load_level('lvl1.txt')
-                        player, level_x, level_y = generate_level(load_level('lvl1.txt'))
+                        load_level(level)
+                        player, level_x, level_y = generate_level(load_level(level))
             if event.key == pygame.K_DOWN:
-                if player.rect.y+tile_width<50*6:
-                    player.rect.y+=tile_width
+                if player.rect.y + tile_width < 50 * 6:
+                    player.rect.y += tile_width
                     if pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type() == 'wall':
-                        #player_group.draw(screen)
-                        #pygame.display.flip()
+                        # player_group.draw(screen)
+                        # pygame.display.flip()
                         # группы спрайтов
                         all_sprites = pygame.sprite.Group()
                         tiles_group = pygame.sprite.Group()
                         player_group = pygame.sprite.Group()
-                        load_level('lvl1.txt')
-                        player, level_x, level_y = generate_level(load_level('lvl1.txt'))
+                        load_level(level)
+                        player, level_x, level_y = generate_level(load_level(level))
 
+    if player.rect.x // 50 in fire_x:
+        minus_time = pygame.time.get_ticks()
+        start_fire = -3
+        fire = [Fire(start_fire, x) for x in range(6)]
+        fire_x = set()
+        all_sprites = pygame.sprite.Group()
+        tiles_group = pygame.sprite.Group()
+        player_group = pygame.sprite.Group()
+        load_level(level)
+        player, level_x, level_y = generate_level(load_level(level))
 
-        all_sprites.draw(screen)
-        tiles_group.draw(screen)
-        player_group.draw(screen)
+    all_sprites.draw(screen)
+    tiles_group.draw(screen)
+    player_group.draw(screen)
+    fire += [Fire((pygame.time.get_ticks() - minus_time) // 300 - time // 1000 + start_fire, x) for x in range(6)]
+    fire_x.add((pygame.time.get_ticks() - minus_time) // 350 - time // 1000 + start_fire)
     # screen.fill((0, 0, 0))
 
     # изменяем ракурс камеры
-
+    '''
     # camera.update(player)
     if player_x == 50 * 30 - 1000:
         camera.update(player)
     # обновляем положение всех спрайтов
     for sprite in all_sprites:
         camera.apply(sprite)
+    '''
     pygame.display.flip()
     clock.tick(FPS)
 pygame.QUIT
