@@ -188,7 +188,6 @@ player_x = 0
 time = pygame.time.get_ticks()
 start_fire = -3
 fire = [Fire(start_fire, x) for x in range(6)]
-fire_x = set()
 minus_time = 0
 while running:
     for event in pygame.event.get():
@@ -233,11 +232,21 @@ while running:
                         load_level(level)
                         player, level_x, level_y = generate_level(load_level(level))
 
-    if player.rect.x // 50 in fire_x:
+    '''
+    if player.rect.x // 50 < pygame.time.get_ticks() // 400 - time // 1000 + start_fire:
+        # print(player.rect.x//50,pygame.time.get_ticks() // 1000 - time // 1000 + start_fire)
+        all_sprites = pygame.sprite.Group()
+        tiles_group = pygame.sprite.Group()
+        player_group = pygame.sprite.Group()
+        load_level(level)
+        player, level_x, level_y = generate_level(load_level(level))
+        time = pygame.time.get_ticks()
+        fire = [Fire(start_fire, x) for x in range(6)]
+    '''
+    if player.rect.x // 50 < (pygame.time.get_ticks() - minus_time) // 300 - time // 1000 + start_fire:
         minus_time = pygame.time.get_ticks()
         start_fire = -3
         fire = [Fire(start_fire, x) for x in range(6)]
-        fire_x = set()
         all_sprites = pygame.sprite.Group()
         tiles_group = pygame.sprite.Group()
         player_group = pygame.sprite.Group()
@@ -248,7 +257,6 @@ while running:
     tiles_group.draw(screen)
     player_group.draw(screen)
     fire += [Fire((pygame.time.get_ticks() - minus_time) // 300 - time // 1000 + start_fire, x) for x in range(6)]
-    fire_x.add((pygame.time.get_ticks() - minus_time) // 350 - time // 1000 + start_fire)
     # screen.fill((0, 0, 0))
 
     # изменяем ракурс камеры
