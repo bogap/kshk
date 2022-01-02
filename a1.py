@@ -8,8 +8,11 @@ clock = pygame.time.Clock()
 WINDOW_SIZE = WIDTH, HEIGHT = 30 * 50, 6 * 50
 screen = pygame.display.set_mode(WINDOW_SIZE)
 lvl = 1
-level = 'lvl' + str(lvl) + '.txt'
 
+def level_name(level):
+    return 'levels/lvl' + str(level) + '.txt'
+
+level=level_name(lvl)
 
 def terminate():
     pygame.quit()
@@ -41,7 +44,8 @@ tile_images = {
     'empty': load_image('sky.png'),
     'grass': load_image('grass.png'),
     'finish': load_image('flag.png'),
-    'fire': load_image('fire.png')
+    'fire': load_image('fire.png'),
+    'candy': load_image('candy.png')
 }
 player_image = load_image('cat.png')
 
@@ -51,6 +55,8 @@ tile_width = tile_height = 50
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
+        self.pos_x = pos_x
+        self.pos_y = pos_y
         self.image = tile_images[tile_type]
         self.type = tile_type
         self.rect = self.image.get_rect().move(
@@ -58,6 +64,9 @@ class Tile(pygame.sprite.Sprite):
 
     def get_tile_type(self):
         return self.type
+
+    def get_tile_pos(self):
+        return self.pos_x, self.pos_y
 
 
 class Player(pygame.sprite.Sprite):
@@ -104,6 +113,37 @@ class Fire(pygame.sprite.Sprite):
         '''
 
 
+class Candy_gained(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(player_group, all_sprites)
+        self.image = load_image('grass.png')
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x, tile_height * pos_y)
+
+
+class Candy(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(player_group, all_sprites)
+        self.image = load_image('candy.png')
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x, tile_height * pos_y)
+
+
+class Score:
+    def __init__(self, pos_x, pos_y):
+        self.pos_x = pos_x
+        self.pos_y = pos_y
+
+    def show_score(self, ochki):
+        line = 'SCORE: ' + str(ochki)
+        font = pygame.font.Font(None, 30)
+        string_rendered = font.render(line, 1, pygame.Color('pink'))
+        intro_rect = string_rendered.get_rect()
+        intro_rect.x = self.pos_x
+        intro_rect.y = self.pos_y
+        screen.blit(string_rendered, intro_rect)
+
+
 def generate_level(level):
     new_player, x, y = None, None, None
     for y in range(len(level)):
@@ -114,12 +154,13 @@ def generate_level(level):
                 Tile('grass', x, y)
             elif level[y][x] == '#':
                 Tile('wall', x, y)
+            elif level[y][x] == 'F':
+                Tile('finish', x, y)
+            elif level[y][x] == '!':
+                Tile('candy', x, y)
             elif level[y][x] == '@':
                 Tile('grass', x, y)
                 new_player = Player(x, y)
-            elif level[y][x] == 'F':
-                Tile('grass', x, y)
-                Tile('finish', x, y)
 
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
@@ -177,19 +218,35 @@ player_group = pygame.sprite.Group()
 pygame.init()
 start_screen()
 screen = pygame.display.set_mode(WINDOW_SIZE)
-load_level(level)
+loaded_level = load_level(level)
+max_score = 0
+for i in range(6):
+    for j in range(30):
+        if loaded_level[i][j] == '!':
+            max_score += 1
 screen.fill((0, 0, 0))
-player, level_x, level_y = generate_level(load_level(level))
-# all_sprites.draw(screen)
-# tiles_group.draw(screen)
-# player_group.draw(screen)
+player, level_x, level_y = generate_level(loaded_level)
 running = True
 player_x = 0
 time = pygame.time.get_ticks()
 start_fire = -3
 fire = [Fire(start_fire, x) for x in range(6)]
 minus_time = 0
+ochki = 0
+gained_candy = []
+
 while running:
+    for el in gained_candy:
+        x, y = el
+        candy = Candy_gained(x, y)
+        if x <= (pygame.time.get_ticks() - minus_time) // 350 - time // 1000 + start_fire:
+            candy = Fire(x, y)
+        if ochki == 0:
+            candy = Candy(x, y)
+            if gained_candy.index(el) == len(gained_candy) - 1:
+                gained_candy = []
+        if player.rect.x // 50 == x and player.rect.y // 50 == y:
+            player_on_grass = Player(x, y)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -199,75 +256,68 @@ while running:
                 if player.rect.x + tile_width < 50 * 30:
                     player.rect.x += tile_width
                     if pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type() == 'wall':
-                        # player_group.draw(screen)
-                        # pygame.display.flip()
-                        # группы спрайтов
                         all_sprites = pygame.sprite.Group()
                         tiles_group = pygame.sprite.Group()
                         player_group = pygame.sprite.Group()
-                        load_level(level)
-                        player, level_x, level_y = generate_level(load_level(level))
+                        player, level_x, level_y = generate_level(loaded_level)
+                        ochki = 0
+                    elif pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type() == 'candy':
+                        gained_candy += [pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_pos()]
+                        ochki += 1
+                    elif pygame.sprite.spritecollide(player, tiles_group, False)[
+                        0].get_tile_type() == 'finish' and ochki == max_score:
+                        print('pobeda')
+                        ochki = 0
             if event.key == pygame.K_UP:
                 if player.rect.y - tile_width >= 50 * 3:
                     player.rect.y -= tile_width
                     if pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type() == 'wall':
-                        # player_group.draw(screen)
-                        # pygame.display.flip()
-                        # группы спрайтов
                         all_sprites = pygame.sprite.Group()
                         tiles_group = pygame.sprite.Group()
                         player_group = pygame.sprite.Group()
-                        load_level(level)
-                        player, level_x, level_y = generate_level(load_level(level))
+                        player, level_x, level_y = generate_level(loaded_level)
+                        ochki = 0
+                    elif pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type() == 'candy':
+                        gained_candy += [pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_pos()]
+                        ochki += 1
+                    elif pygame.sprite.spritecollide(player, tiles_group, False)[
+                        0].get_tile_type() == 'finish' and ochki == max_score:
+                        print('pobeda')
+                        ochki = 0
             if event.key == pygame.K_DOWN:
                 if player.rect.y + tile_width < 50 * 6:
                     player.rect.y += tile_width
                     if pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type() == 'wall':
-                        # player_group.draw(screen)
-                        # pygame.display.flip()
-                        # группы спрайтов
                         all_sprites = pygame.sprite.Group()
                         tiles_group = pygame.sprite.Group()
                         player_group = pygame.sprite.Group()
-                        load_level(level)
-                        player, level_x, level_y = generate_level(load_level(level))
-
-    '''
-    if player.rect.x // 50 < pygame.time.get_ticks() // 400 - time // 1000 + start_fire:
-        # print(player.rect.x//50,pygame.time.get_ticks() // 1000 - time // 1000 + start_fire)
-        all_sprites = pygame.sprite.Group()
-        tiles_group = pygame.sprite.Group()
-        player_group = pygame.sprite.Group()
-        load_level(level)
-        player, level_x, level_y = generate_level(load_level(level))
-        time = pygame.time.get_ticks()
-        fire = [Fire(start_fire, x) for x in range(6)]
-    '''
-    if player.rect.x // 50 < (pygame.time.get_ticks() - minus_time) // 300 - time // 1000 + start_fire:
+                        player, level_x, level_y = generate_level(loaded_level)
+                        ochki = 0
+                    elif pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_type() == 'candy':
+                        gained_candy += [pygame.sprite.spritecollide(player, tiles_group, False)[0].get_tile_pos()]
+                        ochki += 1
+                    elif pygame.sprite.spritecollide(player, tiles_group, False)[
+                        0].get_tile_type() == 'finish' and ochki == max_score:
+                        print('pobeda')
+                        ochki = 0
+    if player.rect.x // 50 < (pygame.time.get_ticks() - minus_time) // 350 - time // 1000 + start_fire:
         minus_time = pygame.time.get_ticks()
         start_fire = -3
         fire = [Fire(start_fire, x) for x in range(6)]
         all_sprites = pygame.sprite.Group()
         tiles_group = pygame.sprite.Group()
         player_group = pygame.sprite.Group()
-        load_level(level)
-        player, level_x, level_y = generate_level(load_level(level))
+        player, level_x, level_y = generate_level(loaded_level)
+        ochki = 0
 
     all_sprites.draw(screen)
     tiles_group.draw(screen)
     player_group.draw(screen)
-    fire += [Fire((pygame.time.get_ticks() - minus_time) // 300 - time // 1000 + start_fire, x) for x in range(6)]
-    # screen.fill((0, 0, 0))
+    fire += [Fire((pygame.time.get_ticks() - minus_time) // 350 - time // 1000 + start_fire, x) for x in range(6)]
 
-    # изменяем ракурс камеры
-    '''
-    # camera.update(player)
-    if player_x == 50 * 30 - 1000:
-        camera.update(player)
-    # обновляем положение всех спрайтов
-    for sprite in all_sprites:
-        camera.apply(sprite)
-    '''
+    score = Score(14 * 50, 1 * 50)
+    score.show_score(ochki)
+
     pygame.display.flip()
     clock.tick(FPS)
 pygame.QUIT
