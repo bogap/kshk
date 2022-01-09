@@ -228,11 +228,6 @@ def end_screen():  # end screen
     screen = pygame.display.set_mode((450, 450))
 
     intro_text = ["КОТОШИЗА", "",
-                  "Чтобы пройти уровень,",
-                  "нужно собрать все сердечки на поле",
-                  "и дойти до радуги.",
-                  "Будьте осторожны на своем пути",
-                  "и остерегайтесь тумана и луж",
                   "ПРИХОДИТЕ ЕЩЕ"]
 
     fon = pygame.transform.scale(load_image('fon.jpg'), (450, 450))
@@ -342,7 +337,7 @@ minus_time = 0
 ochki = 0  # score
 gained_candy = []  # list of gained candy
 temp = 0
-speed = 400  # speed of fog
+speed = 350  # speed of fog
 try:
     while running:  # game cycle
         for el in gained_candy:
